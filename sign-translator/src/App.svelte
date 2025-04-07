@@ -19,7 +19,7 @@
   }
 
   onMount(async () => {
-    console.log("🎬 onMount triggered");
+    console.log("onMount triggered");
     setupStatus = 'loading';
 
     try {
@@ -32,7 +32,7 @@
       // Load the TF model
       try {
         await loadModel();
-        console.log("✅ Model loaded successfully");
+        console.log("Model loaded successfully");
       } catch (modelError) {
         console.error("Model loading error:", modelError);
         throw new Error(`Model loading failed: ${modelError.message}`);
@@ -62,18 +62,17 @@
             ), null, 2) + "...";
             
             try {
-              // Get prediction and confidence
               const result = predictFromLandmarks(landmarks);
               if (result) {
                 prediction = result.letter;
                 confidence = result.confidence;
-                console.log(`🔤 Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
+                console.log(`Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
               } else {
                 prediction = 'Uncertain';
                 confidence = 0;
               }
             } catch (err) {
-              console.error("🚨 Prediction error:", err);
+              console.error("Prediction error:", err);
               prediction = 'Error';
               confidence = 0;
             }
@@ -82,9 +81,12 @@
             prediction = 'No hand detected';
             confidence = 0;
           }
+
+          
         });
 
-        console.log("✓ MediaPipe Hands initialized");
+
+        console.log("MediaPipe Hands initialized");
 
         // Make sure webcam is available
         if (!webcam) {
@@ -104,10 +106,10 @@
           height: 480
         });
 
-        console.log("✓ Camera object created, starting camera...");
+        console.log("Camera object created, starting camera...");
         
         await camera.start();
-        console.log("✅ Camera started successfully");
+        console.log("Camera started successfully");
         setupStatus = 'ready';
         
       } catch (mediaError) {

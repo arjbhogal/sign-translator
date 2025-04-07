@@ -6,7 +6,7 @@
 
   onMount(async () => {
     model = await tf.loadLayersModel('/tfjs_model/model.json');
-    console.log("✅ Model loaded");
+    console.log("Model loaded");
 
     const dummyInput = tf.zeros([1, 63]);
     const prediction = model.predict(dummyInput) as tf.Tensor;
