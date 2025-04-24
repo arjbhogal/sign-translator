@@ -10,12 +10,75 @@
   let errorMessage = '';
   let setupStatus = 'initializing'; // 'initializing', 'loading', 'ready', 'failed'
 
+  // New variables for thesaurus functionality
+  let inputText = '';
+  let countdownActive = false;
+  let countdownValue = 3;
+  let lastAcceptedLetter = '';
+
   // Declare global variables for MediaPipe
   declare global {
     interface Window {
       Hands: any;
       Camera: any;
     }
+  }
+
+  // Timer for letter input countdown
+  let countdownTimer: number;
+
+  function startCountdown(letter: string) {
+    // If the same letter is still being detected, don't restart countdown
+    if (countdownActive && letter === lastAcceptedLetter) {
+      return;
+    }
+
+    // Clear any existing countdown
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+    }
+
+    // Start new countdown
+    countdownActive = true;
+    countdownValue = 3;
+    lastAcceptedLetter = letter;
+
+    countdownTimer = setInterval(() => {
+      countdownValue--;
+      
+      if (countdownValue <= 0) {
+        // Add letter to input text when countdown reaches zero
+        inputText += letter;
+        countdownActive = false;
+        clearInterval(countdownTimer);
+      }
+    }, 1000);
+  }
+
+  function resetCountdown() {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+    }
+    countdownActive = false;
+    lastAcceptedLetter = '';
+  }
+
+  function submitSearch() {
+    if (inputText.trim()) {
+      // Open in a new tab instead of using an iframe (which likely gets blocked by CORS)
+      const url = `https://gebaerden-archiv.at/search?q=${encodeURIComponent(inputText.trim())}`;
+      window.open(url, '_blank');
+    }
+  }
+
+  // No longer needed since we're not using an iframe
+  function closeSearch() {
+    showSearchResults = false;
+  }
+
+  function clearInput() {
+    inputText = '';
+    resetCountdown();
   }
 
   onMount(async () => {
@@ -67,24 +130,31 @@
                 prediction = result.letter;
                 confidence = result.confidence;
                 console.log(`Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
+                
+                // Check if confidence exceeds threshold (70%)
+                if (confidence >= 0.7 && !showSearchResults) {
+                  startCountdown(prediction);
+                } else if (confidence < 0.7) {
+                  resetCountdown();
+                }
               } else {
                 prediction = 'Uncertain';
                 confidence = 0;
+                resetCountdown();
               }
             } catch (err) {
               console.error("Prediction error:", err);
               prediction = 'Error';
               confidence = 0;
+              resetCountdown();
             }
           } else {
             handVisible = false;
             prediction = 'No hand detected';
             confidence = 0;
+            resetCountdown();
           }
-
-          
         });
-
 
         console.log("MediaPipe Hands initialized");
 
@@ -127,7 +197,7 @@
 </script>
 
 <main>
-  <h1>Sign Language to Text</h1>
+  <h1>Sign Language Thesaurus</h1>
   
   {#if setupStatus === 'failed'}
     <div class="error-container">
@@ -153,24 +223,45 @@
               setupStatus === 'ready' ? 'Ready' : 'Error'}
     </div>
     
-    <div class="camera-container">
-      <video bind:this={webcam} autoplay playsinline width="400" aria-label="Webcam feed"></video>
-      <div class="overlay {handVisible ? 'hand-visible' : ''}">
-        {#if !handVisible && setupStatus === 'ready'}
-          <div class="instructions">Show your hand in the camera</div>
-        {/if}
-        {#if setupStatus === 'loading'}
-          <div class="loading">Loading components...</div>
-        {/if}
-      </div>
-    </div>
+    <div class="workspace">
+      <div class="camera-section">
+        <div class="camera-container">
+          <video bind:this={webcam} autoplay playsinline width="400" aria-label="Webcam feed"></video>
+          <div class="overlay {handVisible ? 'hand-visible' : ''}">
+            {#if !handVisible && setupStatus === 'ready'}
+              <div class="instructions">Show your hand in the camera</div>
+            {/if}
+            {#if setupStatus === 'loading'}
+              <div class="loading">Loading components...</div>
+            {/if}
+          </div>
+        </div>
 
-    <div class="prediction-container">
-      <div class="prediction-label">Prediction:</div>
-      <div class="prediction-value">{prediction}</div>
-      {#if confidence > 0}
-        <div class="confidence">Confidence: {(confidence * 100).toFixed(1)}%</div>
-      {/if}
+        <div class="prediction-container">
+          <div class="prediction-label">Current Sign:</div>
+          <div class="prediction-value">{prediction}</div>
+          {#if confidence > 0}
+            <div class="confidence">Confidence: {(confidence * 100).toFixed(1)}%</div>
+          {/if}
+          
+          {#if countdownActive && confidence >= 0.7}
+            <div class="countdown">
+              Adding in: {countdownValue}s
+            </div>
+          {/if}
+        </div>
+      </div>
+      
+      <div class="input-section">
+        <div class="text-input-container">
+          <div class="input-label">Your Text:</div>
+          <div class="input-display" contenteditable="true" bind:innerText={inputText}></div>
+          <div class="button-group">
+            <button on:click={clearInput} class="clear-btn">Clear</button>
+            <button on:click={submitSearch} class="submit-btn">Open Thesaurus Search</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     {#if debug && handVisible}
@@ -181,6 +272,8 @@
         </details>
       </div>
     {/if}
+    
+    <!-- Removed iframe overlay since we're using direct links now -->
   {/if}
 </main>
 
@@ -189,8 +282,25 @@
     text-align: center;
     padding: 2rem;
     font-family: sans-serif;
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  @media (min-width: 900px) {
+    .workspace {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+  }
+
+  .camera-section, .input-section {
+    flex: 1;
   }
 
   .camera-container {
@@ -245,9 +355,84 @@
     margin: 0.5rem 0;
   }
 
+  .countdown {
+    margin-top: 10px;
+    font-size: 1.5rem;
+    color: #ff5722;
+    font-weight: bold;
+    background-color: rgba(255, 235, 205, 0.8);
+    padding: 5px 15px;
+    border-radius: 5px;
+    border: 2px solid #ff5722;
+  }
+
   .confidence {
     font-size: 1rem;
     color: #555;
+  }
+
+  .text-input-container {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 2px solid #4e4e4e;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+  }
+
+  .input-label {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #333;
+  }
+
+  .input-display {
+    min-height: 150px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    text-align: left;
+    font-size: 1.5rem;
+    background-color: white;
+    color: black;
+    margin-bottom: 1rem;
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.2s;
+  }
+
+  .clear-btn {
+    background-color: #f44336;
+    color: white;
+  }
+
+  .clear-btn:hover {
+    background-color: #d32f2f;
+  }
+
+  .submit-btn {
+    background-color: #4CAF50;
+    color: white;
+    flex-grow: 1;
+  }
+
+  .submit-btn:hover {
+    background-color: #388e3c;
   }
 
   .debug-container {
@@ -321,18 +506,4 @@
     margin-bottom: 1rem;
   }
 
-  button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    margin-top: 1rem;
-  }
-
-  button:hover {
-    background-color: #45a049;
-  }
 </style>
