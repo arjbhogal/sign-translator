@@ -25,7 +25,7 @@
   }
 
   // Timer for letter input countdown
-  let countdownTimer: number;
+  let countdownTimer: number | undefined;
 
   function startCountdown(letter: string) {
     // If the same letter is still being detected, don't restart countdown
@@ -47,8 +47,13 @@
       countdownValue--;
       
       if (countdownValue <= 0) {
-        // Add letter to input text when countdown reaches zero
-        inputText += letter;
+        try {
+          // Add letter to input text when countdown reaches zero
+          inputText += letter;
+          console.log(`Added letter: ${letter}, new text: ${inputText}`);
+        } catch (e) {
+          console.error("Error adding letter:", e);
+        }
         countdownActive = false;
         clearInterval(countdownTimer);
       }
@@ -56,11 +61,16 @@
   }
 
   function resetCountdown() {
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
+    try {
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = undefined;
+      }
+      countdownActive = false;
+      lastAcceptedLetter = '';
+    } catch (e) {
+      console.error("Error resetting countdown:", e);
     }
-    countdownActive = false;
-    lastAcceptedLetter = '';
   }
 
   function submitSearch() {
@@ -132,7 +142,7 @@
                 console.log(`Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
                 
                 // Check if confidence exceeds threshold (70%)
-                if (confidence >= 0.7 && !showSearchResults) {
+                if (confidence >= 0.7) {
                   startCountdown(prediction);
                 } else if (confidence < 0.7) {
                   resetCountdown();
@@ -258,7 +268,7 @@
           <div class="input-display" contenteditable="true" bind:innerText={inputText}></div>
           <div class="button-group">
             <button on:click={clearInput} class="clear-btn">Clear</button>
-            <button on:click={submitSearch} class="submit-btn">Open Thesaurus Search</button>
+            <button on:click={submitSearch} class="submit-btn">Search</button>
           </div>
         </div>
       </div>
@@ -286,6 +296,11 @@
     margin: 0 auto;
   }
 
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
   .workspace {
     display: flex;
     flex-direction: column;
@@ -300,7 +315,7 @@
   }
 
   .camera-section, .input-section {
-    flex: 1;
+    width: 500px;
   }
 
   .camera-container {
@@ -350,9 +365,14 @@
   }
 
   .prediction-value {
-    font-weight: bold;
-    font-size: 3rem;
+    font-weight: medium;
+    font-size: 2rem;
     margin: 0.5rem 0;
+  }
+
+  .prediction-label {
+    font-size: 1.5rem;
+    font-weight: bold;
   }
 
   .countdown {
