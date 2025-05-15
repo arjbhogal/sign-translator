@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 <script lang="ts">
   import { onMount } from 'svelte';
   import { loadModel, predictFromLandmarks } from './lib/model';
@@ -16,6 +18,11 @@
   let countdownValue = 3;
   let lastAcceptedLetter = '';
 
+  // New variables for buffer system
+  let signBuffer: string[] = [];
+  let bufferThreshold = 0.6; // 60% confidence threshold for buffering
+  let countdownStartTime: number | null = null;
+
   // Declare global variables for MediaPipe
   declare global {
     interface Window {
@@ -27,37 +34,88 @@
   // Timer for letter input countdown
   let countdownTimer: number | undefined;
 
-  function startCountdown(letter: string) {
-    // If the same letter is still being detected, don't restart countdown
+  // Function to determine the most frequent letter in the buffer
+  function getMostFrequentLetter(): string {
+    // If buffer is empty (shouldn't happen), return the lastAcceptedLetter
+    if (signBuffer.length === 0) {
+      return lastAcceptedLetter;
+    }
+    
+    // Count occurrences of each letter
+    const letterCounts = signBuffer.reduce((counts, letter) => {
+      counts[letter] = (counts[letter] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    // Find the letter with highest count
+    let mostFrequentLetter = signBuffer[0];
+    let maxCount = 0;
+    
+    for (const [letter, count] of Object.entries(letterCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostFrequentLetter = letter;
+      }
+    }
+    
+    return mostFrequentLetter;
+  }
+
+  function startCountdown(letter: string, currentConfidence: number) {
+    // Reset buffer if countdown is not active or if it's a different letter starting the countdown
+    if (!countdownActive) {
+      signBuffer = [];
+      countdownStartTime = Date.now();
+    }
+    
+    // Add the current letter to the buffer every time we detect a sign
+    signBuffer.push(letter);
+    
+    // If already counting down with same letter, just update buffer
     if (countdownActive && letter === lastAcceptedLetter) {
       return;
     }
-
-    // Clear any existing countdown
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-    }
-
-    // Start new countdown
-    countdownActive = true;
-    countdownValue = 3;
-    lastAcceptedLetter = letter;
-
-    countdownTimer = setInterval(() => {
-      countdownValue--;
-      
-      if (countdownValue <= 0) {
-        try {
-          // Add letter to input text when countdown reaches zero
-          inputText += letter;
-          console.log(`Added letter: ${letter}, new text: ${inputText}`);
-        } catch (e) {
-          console.error("Error adding letter:", e);
-        }
-        countdownActive = false;
+    
+    // Check if we meet the threshold to start/continue countdown
+    if (currentConfidence >= bufferThreshold) {
+      // Clear any existing countdown
+      if (countdownTimer) {
         clearInterval(countdownTimer);
       }
-    }, 1000);
+      
+      // Start new countdown
+      countdownActive = true;
+      countdownValue = 3;
+      lastAcceptedLetter = letter;
+      
+      countdownTimer = setInterval(() => {
+        countdownValue--;
+        
+        if (countdownValue <= 0) {
+          try {
+            // Get the most frequent letter from the buffer
+            const mostFrequentLetter = getMostFrequentLetter();
+            // Add the most frequent letter to input text when countdown reaches zero
+            inputText += mostFrequentLetter;
+            console.log(`Added letter: ${mostFrequentLetter}, new text: ${inputText}`);
+            
+            // Reset buffer and countdown
+            signBuffer = [];
+            countdownActive = false;
+            clearInterval(countdownTimer);
+            countdownStartTime = null;
+          } catch (e) {
+            console.error("Error adding letter:", e);
+          }
+        }
+      }, 1000);
+    } else {
+      // If below threshold but countdown is active, don't reset immediately
+      // Just update the buffer
+      if (!countdownActive) {
+        resetCountdown();
+      }
+    }
   }
 
   function resetCountdown() {
@@ -68,6 +126,8 @@
       }
       countdownActive = false;
       lastAcceptedLetter = '';
+      signBuffer = [];
+      countdownStartTime = null;
     } catch (e) {
       console.error("Error resetting countdown:", e);
     }
@@ -141,11 +201,16 @@
                 confidence = result.confidence;
                 console.log(`Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
                 
-                // Check if confidence exceeds threshold (70%)
-                if (confidence >= 0.7) {
-                  startCountdown(prediction);
-                } else if (confidence < 0.7) {
-                  resetCountdown();
+                // Use the new threshold for buffering (60%)
+                if (confidence >= bufferThreshold) {
+                  startCountdown(prediction, confidence);
+                } else {
+                  // If below threshold but countdown is active, still add to buffer
+                  if (countdownActive) {
+                    signBuffer.push(prediction);
+                  } else {
+                    resetCountdown();
+                  }
                 }
               } else {
                 prediction = 'Uncertain';
@@ -254,9 +319,17 @@
             <div class="confidence">Confidence: {(confidence * 100).toFixed(1)}%</div>
           {/if}
           
-          {#if countdownActive && confidence >= 0.7}
+          {#if countdownActive && confidence >= bufferThreshold}
             <div class="countdown">
               Adding in: {countdownValue}s
+              <div class="buffer-info">
+                Buffer size: {signBuffer.length}
+                {#if signBuffer.length > 0}
+                  <div class="current-prediction">
+                    Current best: {getMostFrequentLetter()}
+                  </div>
+                {/if}
+              </div>
             </div>
           {/if}
         </div>
@@ -282,8 +355,6 @@
         </details>
       </div>
     {/if}
-    
-    <!-- Removed iframe overlay since we're using direct links now -->
   {/if}
 </main>
 
@@ -384,6 +455,17 @@
     padding: 5px 15px;
     border-radius: 5px;
     border: 2px solid #ff5722;
+  }
+
+  .buffer-info {
+    font-size: 0.9rem;
+    margin-top: 5px;
+    color: #666;
+  }
+
+  .current-prediction {
+    font-weight: bold;
+    color: #ff8800;
   }
 
   .confidence {
@@ -525,5 +607,4 @@
     font-size: 0.9rem;
     margin-bottom: 1rem;
   }
-
 </style>

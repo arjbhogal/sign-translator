@@ -18,6 +18,8 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.22.0"
+    "@tailwindcss/vite": "^4.1.6",
+    "@tensorflow/tfjs": "^4.22.0",
+    "tailwindcss": "^4.1.6"
   }
 }
