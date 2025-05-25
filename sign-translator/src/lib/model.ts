@@ -13,6 +13,7 @@ interface HandLandmark {
 interface PredictionResult {
   letter: string;
   confidence: number;
+  isSpecialAction?: boolean; // Kennzeichnet DELETE oder SPACE
 }
 
 // Try multiple approaches to load the model
@@ -30,8 +31,13 @@ export async function loadModel(): Promise<void> {
     await tf.ready();
     console.log("TensorFlow.js ready, backend:", tf.getBackend());
     
-    // Initialize alphabet mapping
-    labelMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    // Initialize label mapping with 26 letters + DELETE + SPACE = 28 classes
+    labelMap = [
+      ...('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')), // 26 Buchstaben
+      'DELETE', // Index 26
+      'SPACE'   // Index 27
+    ];
+    console.log("Label map initialized:", labelMap);
     
     // Try different model loading approaches
     const modelUrl = '/tfjs_model/model.json';
@@ -91,12 +97,12 @@ export async function loadModel(): Promise<void> {
   }
 }
 
-// Create a simple fallback model for testing purposes
+// Create a simple fallback model for testing purposes (now with 28 outputs)
 function createFallbackModel(): tf.LayersModel {
   const input = tf.input({shape: [63]});
   const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(input);
   const dense2 = tf.layers.dense({units: 64, activation: 'relu'}).apply(dense1);
-  const output = tf.layers.dense({units: 26, activation: 'softmax'}).apply(dense2);
+  const output = tf.layers.dense({units: 28, activation: 'softmax'}).apply(dense2); // 28 statt 26
   
   const fallbackModel = tf.model({inputs: input, outputs: output as tf.SymbolicTensor});
   
@@ -150,14 +156,15 @@ export function predictFromLandmarks(landmarks: HandLandmark[]): PredictionResul
     }
     
     const letter = labelMap[predictedIndex];
+    const isSpecialAction = letter === 'DELETE' || letter === 'SPACE';
     
-    // Log top 3 predictions for debugging
-    const top3 = [...confidences]
+    // Log top 5 predictions for debugging (jetzt mehr da wir 28 Klassen haben)
+    const top5 = [...confidences]
       .map((conf, idx) => ({ letter: labelMap[idx], confidence: conf }))
       .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 3);
+      .slice(0, 5);
     
-    console.log("Top 3 predictions:", top3);
+    console.log("Top 5 predictions:", top5);
     
     // Clean up tensors
     input.dispose();
@@ -165,7 +172,8 @@ export function predictFromLandmarks(landmarks: HandLandmark[]): PredictionResul
     
     return {
       letter,
-      confidence: maxConfidence
+      confidence: maxConfidence,
+      isSpecialAction
     };
   } catch (error) {
     console.error("Prediction error:", error);
