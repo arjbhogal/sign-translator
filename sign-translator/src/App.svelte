@@ -1,4 +1,4 @@
-@import "tailwindcss";
+
 
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -16,7 +16,7 @@
   let inputText = '';
   let countdownActive = false;
   let countdownValue = 3;
-  let lastAcceptedLetter = '';
+  let lastAcceptedAction = ''; // Kann jetzt auch DELETE oder SPACE sein
 
   // New variables for buffer system
   let signBuffer: string[] = [];
@@ -31,48 +31,67 @@
     }
   }
 
-  // Timer for letter input countdown
+  // Timer for action input countdown
   let countdownTimer: number | undefined;
 
-  // Function to determine the most frequent letter in the buffer
-  function getMostFrequentLetter(): string {
-    // If buffer is empty (shouldn't happen), return the lastAcceptedLetter
+  // Function to determine the most frequent action in the buffer
+  function getMostFrequentAction(): string {
+    // If buffer is empty (shouldn't happen), return the lastAcceptedAction
     if (signBuffer.length === 0) {
-      return lastAcceptedLetter;
+      return lastAcceptedAction;
     }
     
-    // Count occurrences of each letter
-    const letterCounts = signBuffer.reduce((counts, letter) => {
-      counts[letter] = (counts[letter] || 0) + 1;
+    // Count occurrences of each action
+    const actionCounts = signBuffer.reduce((counts, action) => {
+      counts[action] = (counts[action] || 0) + 1;
       return counts;
     }, {} as Record<string, number>);
     
-    // Find the letter with highest count
-    let mostFrequentLetter = signBuffer[0];
+    // Find the action with highest count
+    let mostFrequentAction = signBuffer[0];
     let maxCount = 0;
     
-    for (const [letter, count] of Object.entries(letterCounts)) {
+    for (const [action, count] of Object.entries(actionCounts)) {
       if (count > maxCount) {
         maxCount = count;
-        mostFrequentLetter = letter;
+        mostFrequentAction = action;
       }
     }
     
-    return mostFrequentLetter;
+    return mostFrequentAction;
   }
 
-  function startCountdown(letter: string, currentConfidence: number) {
-    // Reset buffer if countdown is not active or if it's a different letter starting the countdown
+  // Execute the recognized action (letter, delete, or space)
+  function executeAction(action: string) {
+    if (action === 'DELETE') {
+      // Delete all text
+      if (inputText.length > 0) {
+        inputText = '';
+        console.log(`Deleted all text, cleared input`);
+      }
+    } else if (action === 'SPACE') {
+      // Add a space
+      inputText += ' ';
+      console.log(`Added space, new text: "${inputText}"`);
+    } else {
+      // Add the letter
+      inputText += action;
+      console.log(`Added letter: ${action}, new text: "${inputText}"`);
+    }
+  }
+
+  function startCountdown(action: string, currentConfidence: number) {
+    // Reset buffer if countdown is not active or if it's a different action starting the countdown
     if (!countdownActive) {
       signBuffer = [];
       countdownStartTime = Date.now();
     }
     
-    // Add the current letter to the buffer every time we detect a sign
-    signBuffer.push(letter);
+    // Add the current action to the buffer every time we detect a sign
+    signBuffer.push(action);
     
-    // If already counting down with same letter, just update buffer
-    if (countdownActive && letter === lastAcceptedLetter) {
+    // If already counting down with same action, just update buffer
+    if (countdownActive && action === lastAcceptedAction) {
       return;
     }
     
@@ -86,18 +105,18 @@
       // Start new countdown
       countdownActive = true;
       countdownValue = 3;
-      lastAcceptedLetter = letter;
+      lastAcceptedAction = action;
       
       countdownTimer = setInterval(() => {
         countdownValue--;
         
         if (countdownValue <= 0) {
           try {
-            // Get the most frequent letter from the buffer
-            const mostFrequentLetter = getMostFrequentLetter();
-            // Add the most frequent letter to input text when countdown reaches zero
-            inputText += mostFrequentLetter;
-            console.log(`Added letter: ${mostFrequentLetter}, new text: ${inputText}`);
+            // Get the most frequent action from the buffer
+            const mostFrequentAction = getMostFrequentAction();
+            
+            // Execute the action (add letter, delete, or space)
+            executeAction(mostFrequentAction);
             
             // Reset buffer and countdown
             signBuffer = [];
@@ -105,7 +124,7 @@
             clearInterval(countdownTimer);
             countdownStartTime = null;
           } catch (e) {
-            console.error("Error adding letter:", e);
+            console.error("Error executing action:", e);
           }
         }
       }, 1000);
@@ -125,7 +144,7 @@
         countdownTimer = undefined;
       }
       countdownActive = false;
-      lastAcceptedLetter = '';
+      lastAcceptedAction = '';
       signBuffer = [];
       countdownStartTime = null;
     } catch (e) {
@@ -141,14 +160,19 @@
     }
   }
 
-  // No longer needed since we're not using an iframe
-  function closeSearch() {
-    showSearchResults = false;
-  }
-
   function clearInput() {
     inputText = '';
     resetCountdown();
+  }
+
+  // Format the prediction display to show special actions differently
+  function formatPredictionDisplay(pred: string): string {
+    if (pred === 'DELETE') {
+      return '🗑️ DELETE';
+    } else if (pred === 'SPACE') {
+      return '␣ SPACE';
+    }
+    return pred;
   }
 
   onMount(async () => {
@@ -199,7 +223,7 @@
               if (result) {
                 prediction = result.letter;
                 confidence = result.confidence;
-                console.log(`Predicted letter: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
+                console.log(`Predicted action: ${prediction} (${(confidence * 100).toFixed(1)}%)`);
                 
                 // Use the new threshold for buffering (60%)
                 if (confidence >= bufferThreshold) {
@@ -314,24 +338,35 @@
 
         <div class="prediction-container">
           <div class="prediction-label">Current Sign:</div>
-          <div class="prediction-value">{prediction}</div>
+          <div class="prediction-value {prediction === 'DELETE' ? 'delete-action' : prediction === 'SPACE' ? 'space-action' : ''}">
+            {formatPredictionDisplay(prediction)}
+          </div>
           {#if confidence > 0}
             <div class="confidence">Confidence: {(confidence * 100).toFixed(1)}%</div>
           {/if}
           
           {#if countdownActive && confidence >= bufferThreshold}
             <div class="countdown">
-              Adding in: {countdownValue}s
+              Executing in: {countdownValue}s
               <div class="buffer-info">
                 Buffer size: {signBuffer.length}
                 {#if signBuffer.length > 0}
                   <div class="current-prediction">
-                    Current best: {getMostFrequentLetter()}
+                    Current best: {formatPredictionDisplay(getMostFrequentAction())}
                   </div>
                 {/if}
               </div>
             </div>
           {/if}
+        </div>
+
+        <div class="legend">
+          <h3>Available Actions:</h3>
+          <div class="legend-items">
+            <span class="legend-item">A-Z: Add letter</span>
+            <span class="legend-item delete-legend">🗑️ DELETE: Clear all text</span>
+            <span class="legend-item space-legend">␣ SPACE: Add space</span>
+          </div>
         </div>
       </div>
       
@@ -441,6 +476,16 @@
     margin: 0.5rem 0;
   }
 
+  .prediction-value.delete-action {
+    color: #f44336;
+    font-weight: bold;
+  }
+
+  .prediction-value.space-action {
+    color: #2196F3;
+    font-weight: bold;
+  }
+
   .prediction-label {
     font-size: 1.5rem;
     font-weight: bold;
@@ -471,6 +516,41 @@
   .confidence {
     font-size: 1rem;
     color: #555;
+  }
+
+  .legend {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+  }
+
+  .legend h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #333;
+  }
+
+  .legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .legend-item {
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  .legend-item.delete-legend {
+    color: #f44336;
+    font-weight: bold;
+  }
+
+  .legend-item.space-legend {
+    color: #2196F3;
+    font-weight: bold;
   }
 
   .text-input-container {
