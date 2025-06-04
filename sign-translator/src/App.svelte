@@ -1,5 +1,3 @@
-
-
 <script lang="ts">
   import { onMount } from 'svelte';
   import { loadModel, predictFromLandmarks } from './lib/model';
@@ -22,6 +20,13 @@
   let signBuffer: string[] = [];
   let bufferThreshold = 0.6; // 60% confidence threshold for buffering
   let countdownStartTime: number | null = null;
+
+  // Slider variable for tracking time (0.5 to 3 seconds)
+  let trackingTime = 3; // Default 3 seconds
+  
+  // Variables for precise timing
+  let countdownStartMs = 0;
+  let countdownDurationMs = 3000;
 
   // Declare global variables for MediaPipe
   declare global {
@@ -70,9 +75,9 @@
         console.log(`Deleted all text, cleared input`);
       }
     } else if (action === 'SPACE') {
-      // Add a space
-      inputText += ' ';
-      console.log(`Added space, new text: "${inputText}"`);
+      // Trigger search directly - always works, even with empty text
+      console.log(`SPACE detected - triggering search with text: "${inputText}"`);
+      submitSearch();
     } else {
       // Add the letter
       inputText += action;
@@ -104,13 +109,17 @@
       
       // Start new countdown
       countdownActive = true;
-      countdownValue = 3;
+      countdownDurationMs = trackingTime * 1000; // Convert to milliseconds
+      countdownStartMs = Date.now();
+      countdownValue = trackingTime; // Start with full time
       lastAcceptedAction = action;
       
       countdownTimer = setInterval(() => {
-        countdownValue--;
+        const elapsed = Date.now() - countdownStartMs;
+        const remaining = Math.max(0, countdownDurationMs - elapsed);
+        countdownValue = remaining / 1000; // Convert back to seconds for display
         
-        if (countdownValue <= 0) {
+        if (remaining <= 0) {
           try {
             // Get the most frequent action from the buffer
             const mostFrequentAction = getMostFrequentAction();
@@ -127,7 +136,7 @@
             console.error("Error executing action:", e);
           }
         }
-      }, 1000);
+      }, 100); // Update every 100ms for smoother countdown
     } else {
       // If below threshold but countdown is active, don't reset immediately
       // Just update the buffer
@@ -153,11 +162,14 @@
   }
 
   function submitSearch() {
-    if (inputText.trim()) {
-      // Open in a new tab instead of using an iframe (which likely gets blocked by CORS)
-      const url = `https://gebaerden-archiv.at/search?q=${encodeURIComponent(inputText.trim())}`;
-      window.open(url, '_blank');
-    }
+    // Always open search, even if input is empty
+    const searchText = inputText.trim();
+    const url = searchText 
+      ? `https://gebaerden-archiv.at/search?q=${encodeURIComponent(searchText)}`
+      : `https://gebaerden-archiv.at/search`;
+    
+    console.log(`Opening search URL: ${url}`);
+    window.open(url, '_blank');
   }
 
   function clearInput() {
@@ -170,7 +182,7 @@
     if (pred === 'DELETE') {
       return '🗑️ DELETE';
     } else if (pred === 'SPACE') {
-      return '␣ SPACE';
+      return '🔍 SEARCH';
     }
     return pred;
   }
@@ -338,7 +350,7 @@
 
         <div class="prediction-container">
           <div class="prediction-label">Current Sign:</div>
-          <div class="prediction-value {prediction === 'DELETE' ? 'delete-action' : prediction === 'SPACE' ? 'space-action' : ''}">
+          <div class="prediction-value {prediction === 'DELETE' ? 'delete-action' : prediction === 'SPACE' ? 'search-action' : ''}">
             {formatPredictionDisplay(prediction)}
           </div>
           {#if confidence > 0}
@@ -347,7 +359,7 @@
           
           {#if countdownActive && confidence >= bufferThreshold}
             <div class="countdown">
-              Executing in: {countdownValue}s
+              Executing in: {countdownValue.toFixed(1)}s
               <div class="buffer-info">
                 Buffer size: {signBuffer.length}
                 {#if signBuffer.length > 0}
@@ -365,7 +377,27 @@
           <div class="legend-items">
             <span class="legend-item">A-Z: Add letter</span>
             <span class="legend-item delete-legend">🗑️ DELETE: Clear all text</span>
-            <span class="legend-item space-legend">␣ SPACE: Add space</span>
+            <span class="legend-item search-legend">🔍 SEARCH: Execute search</span>
+          </div>
+        </div>
+
+        <div class="settings-panel">
+          <h3>Settings:</h3>
+          <div class="slider-container">
+            <label for="trackingTime">Tracking Time: {trackingTime.toFixed(1)}s</label>
+            <input 
+              type="range" 
+              id="trackingTime"
+              bind:value={trackingTime} 
+              min="0.5" 
+              max="3" 
+              step="0.1"
+              class="time-slider"
+            />
+            <div class="slider-labels">
+              <span>0.5s</span>
+              <span>3.0s</span>
+            </div>
           </div>
         </div>
       </div>
@@ -486,6 +518,11 @@
     font-weight: bold;
   }
 
+  .prediction-value.search-action {
+    color: #ff9800;
+    font-weight: bold;
+  }
+
   .prediction-label {
     font-size: 1.5rem;
     font-weight: bold;
@@ -550,6 +587,11 @@
 
   .legend-item.space-legend {
     color: #2196F3;
+    font-weight: bold;
+  }
+
+  .legend-item.search-legend {
+    color: #ff9800;
     font-weight: bold;
   }
 
@@ -686,5 +728,67 @@
     color: #333;
     font-size: 0.9rem;
     margin-bottom: 1rem;
+  }
+
+  .settings-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+  }
+
+  .settings-panel h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #333;
+  }
+
+  .slider-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .slider-container label {
+    font-size: 0.9rem;
+    color: #555;
+    font-weight: bold;
+  }
+
+  .time-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4CAF50;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .time-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #4CAF50;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #666;
   }
 </style>
