@@ -372,19 +372,32 @@
           {/if}
         </div>
 
-        <div class="legend">
-          <h3>Available Actions:</h3>
-          <div class="legend-items">
-            <span class="legend-item">A-Z: Add letter</span>
-            <span class="legend-item delete-legend">🗑️ DELETE: Clear all text</span>
-            <span class="legend-item search-legend">🔍 SEARCH: Execute search</span>
+       <div class="legend">
+        <h3>Available Actions:</h3>
+        <div class="legend-items">
+          <div class="legend-card">
+            <span class="legend-title">A-Z: Add letter</span>
+          </div>
+
+          <div class="legend-card delete-legend">
+            <span class="legend-title">CLEAR: Clear all text</span>
+            <img src="src/assets/del18.jpg" alt="Delete Action Example" class="legend-preview" />
+          </div>
+
+          <div class="legend-card search-legend">
+            <span class="legend-title">SEARCH: Execute search</span>
+            <img src="src/assets/space2.jpg" alt="Search Action Example" class="legend-preview" />
           </div>
         </div>
+      </div>
+
+
 
         <div class="settings-panel">
           <h3>Settings:</h3>
           <div class="slider-container">
             <label for="trackingTime">Tracking Time: {trackingTime.toFixed(1)}s</label>
+            <br>
             <input 
               type="range" 
               id="trackingTime"
@@ -395,7 +408,7 @@
               class="time-slider"
             />
             <div class="slider-labels">
-              <span>0.5s</span>
+              <span>0.5s -</span>
               <span>3.0s</span>
             </div>
           </div>
@@ -426,369 +439,179 @@
 </main>
 
 <style>
-  main {
-    text-align: center;
-    padding: 2rem;
-    font-family: sans-serif;
-    max-width: 1000px;
-    margin: 0 auto;
-  }
+  /* === General layout & base styling === */
+main {
+  text-align: center;
+  padding: 2rem;
+  font-family: 'Segoe UI', sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: #1e1e1e;
+  color: #eee;
+}
 
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-  }
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
 
+.status-indicator {
+  background-color: #2e2e2e;
+  color: #90ee90;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+/* === Camera and Input Panels === */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+@media (min-width: 900px) {
   .workspace {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  @media (min-width: 900px) {
-    .workspace {
-      flex-direction: row;
-      align-items: flex-start;
-    }
-  }
-
-  .camera-section, .input-section {
-    width: 500px;
-  }
-
-  .camera-container {
-    position: relative;
-    margin: 0 auto;
-    width: 400px;
-  }
-
-  video {
-    margin-top: 1rem;
-    border-radius: 10px;
-    border: 2px solid #333;
-    background-color: black;
-    display: block;
-  }
-
-  .overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
+    flex-direction: row;
     justify-content: center;
-    pointer-events: none;
+    align-items: flex-start;
   }
+}
 
-  .instructions, .loading {
-    background-color: rgba(0,0,0,0.7);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-weight: bold;
-  }
+.camera-section, .input-section {
+  background-color: #f4f4f4;
+  color: #333;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  width: 420px;
+}
 
-  .loading {
-    background-color: rgba(0,70,150,0.7);
-  }
+/* === Webcam & Overlay === */
+.camera-container video {
+  border-radius: 10px;
+  width: 100%;
+  border: 2px solid #444;
+}
 
-  .prediction-container {
-    margin-top: 1.5rem;
-    font-size: 1.8rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+.overlay {
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+}
 
-  .prediction-value {
-    font-weight: medium;
-    font-size: 2rem;
-    margin: 0.5rem 0;
-  }
+/* === Input display & buttons === */
+.input-display {
+  min-height: 100px;
+  max-height: 300px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: white;
+  margin-bottom: 1rem;
+  text-align: left;
+  font-size: 1.2rem;
+}
 
-  .prediction-value.delete-action {
-    color: #f44336;
-    font-weight: bold;
-  }
+.button-group button {
+  padding: 10px 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s ease;
+}
 
-  .prediction-value.space-action {
-    color: #2196F3;
-    font-weight: bold;
-  }
+.clear-btn {
+  background-color: #e74c3c;
+  color: white;
+}
+.clear-btn:hover {
+  background-color: #c0392b;
+}
 
-  .prediction-value.search-action {
-    color: #ff9800;
-    font-weight: bold;
-  }
+.submit-btn {
+  background-color: #27ae60;
+  color: white;
+}
+.submit-btn:hover {
+  background-color: #1e8449;
+}
 
-  .prediction-label {
-    font-size: 1.5rem;
-    font-weight: bold;
-  }
+/* === Legend Section === */
+.legend {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
 
-  .countdown {
-    margin-top: 10px;
-    font-size: 1.5rem;
-    color: #ff5722;
-    font-weight: bold;
-    background-color: rgba(255, 235, 205, 0.8);
-    padding: 5px 15px;
-    border-radius: 5px;
-    border: 2px solid #ff5722;
-  }
+.legend h3 {
+  margin-bottom: 0.5rem;
+}
 
-  .buffer-info {
-    font-size: 0.9rem;
-    margin-top: 5px;
-    color: #666;
-  }
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-  .current-prediction {
-    font-weight: bold;
-    color: #ff8800;
-  }
+.legend-card {
+  background-color: white;
+  padding: 10px;
+  border-left: 5px solid #888;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
 
-  .confidence {
-    font-size: 1rem;
-    color: #555;
-  }
+.legend-card img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid #3498db;
+}
 
-  .legend {
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: #f5f5f5;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-  }
+.legend-title {
+  font-weight: bold;
+  font-size: 1rem;
+}
 
-  .legend h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-    color: #333;
-  }
+.delete-legend {
+  border-left-color: #e74c3c;
+}
 
-  .legend-items {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-  }
+.delete-legend .legend-title {
+  color: #e74c3c;
+}
 
-  .legend-item {
-    font-size: 0.9rem;
-    color: #666;
-  }
+.search-legend {
+  border-left-color: #f39c12;
+}
 
-  .legend-item.delete-legend {
-    color: #f44336;
-    font-weight: bold;
-  }
+.search-legend .legend-title {
+  color: #f39c12;
+}
 
-  .legend-item.space-legend {
-    color: #2196F3;
-    font-weight: bold;
-  }
+/* === Settings === */
+.settings-panel {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
 
-  .legend-item.search-legend {
-    color: #ff9800;
-    font-weight: bold;
-  }
-
-  .text-input-container {
-    margin-top: 1rem;
-    padding: 1rem;
-    border: 2px solid #4e4e4e;
-    border-radius: 10px;
-    background-color: #f9f9f9;
-  }
-
-  .input-label {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: #333;
-  }
-
-  .input-display {
-    min-height: 150px;
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    text-align: left;
-    font-size: 1.5rem;
-    background-color: white;
-    color: black;
-    margin-bottom: 1rem;
-  }
-
-  .button-group {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: all 0.2s;
-  }
-
-  .clear-btn {
-    background-color: #f44336;
-    color: white;
-  }
-
-  .clear-btn:hover {
-    background-color: #d32f2f;
-  }
-
-  .submit-btn {
-    background-color: #4CAF50;
-    color: white;
-    flex-grow: 1;
-  }
-
-  .submit-btn:hover {
-    background-color: #388e3c;
-  }
-
-  .debug-container {
-    margin-top: 1rem;
-    text-align: left;
-    font-size: 0.8rem;
-  }
-
-  details {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  summary {
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  pre {
-    max-height: 200px;
-    overflow: auto;
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 5px;
-  }
-
-  .hand-visible {
-    border: 2px solid #4CAF50;
-  }
-
-  .error-container {
-    margin-top: 2rem;
-    padding: 1rem;
-    border: 2px solid #ff6b6b;
-    border-radius: 10px;
-    background-color: #fff5f5;
-    color: #333;
-    text-align: left;
-  }
-
-  .error-message {
-    padding: 10px;
-    background-color: #f8d7da;
-    border-radius: 5px;
-    font-family: monospace;
-    font-weight: bold;
-    color: #721c24;
-  }
-
-  .troubleshooting {
-    margin-top: 1.5rem;
-  }
-
-  .troubleshooting ol {
-    text-align: left;
-  }
-
-  .troubleshooting li {
-    margin-bottom: 0.5rem;
-  }
-
-  .status-indicator {
-    display: inline-block;
-    padding: 5px 10px;
-    border-radius: 5px;
-    background-color: #f0f0f0;
-    color: #333;
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-  }
-
-  .settings-panel {
-    margin-top: 1rem;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-  }
-
-  .settings-panel h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-    color: #333;
-  }
-
-  .slider-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .slider-container label {
-    font-size: 0.9rem;
-    color: #555;
-    font-weight: bold;
-  }
-
-  .time-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    background: #ddd;
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .time-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    background: #4CAF50;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-
-  .time-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: #4CAF50;
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-  }
-
-  .slider-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    color: #666;
-  }
+  
 </style>
