@@ -308,44 +308,28 @@
 </script>
 
 <main>
+  <!-- Header -->
   <h1>Sign Language Thesaurus</h1>
-  
+
+  <!-- Status -->
   {#if setupStatus === 'failed'}
     <div class="error-container">
       <h2>Setup Failed</h2>
-      <p>There was an error setting up the application:</p>
       <p class="error-message">{errorMessage}</p>
-      <div class="troubleshooting">
-        <h3>Troubleshooting steps:</h3>
-        <ol>
-          <li>Make sure you're using a modern browser (Chrome, Firefox, Edge)</li>
-          <li>Check that your camera is connected and working</li>
-          <li>Allow camera permissions when prompted</li>
-          <li>Make sure you're connected to the internet (MediaPipe libraries are loaded from CDN)</li>
-          <li>Check the browser console (F12) for more detailed error messages</li>
-        </ol>
-        <button on:click={() => window.location.reload()}>Reload Application</button>
-      </div>
     </div>
   {:else}
     <div class="status-indicator">
-      Status: {setupStatus === 'initializing' ? 'Initializing...' : 
-              setupStatus === 'loading' ? 'Loading components...' : 
-              setupStatus === 'ready' ? 'Ready' : 'Error'}
+      Status: {setupStatus === 'ready' ? 'Ready' : 'Loading...'}
     </div>
-    
+
     <div class="workspace">
+      <!-- Webcam and prediction section -->
       <div class="camera-section">
         <div class="camera-container">
-          <video bind:this={webcam} autoplay playsinline width="400" aria-label="Webcam feed"></video>
-          <div class="overlay {handVisible ? 'hand-visible' : ''}">
-            {#if !handVisible && setupStatus === 'ready'}
-              <div class="instructions">Show your hand in the camera</div>
-            {/if}
-            {#if setupStatus === 'loading'}
-              <div class="loading">Loading components...</div>
-            {/if}
-          </div>
+          <video bind:this={webcam} autoplay playsinline width="400"></video>
+          {#if !handVisible && setupStatus === 'ready'}
+            <div class="overlay">Show your hand in the camera</div>
+          {/if}
         </div>
 
         <div class="prediction-container">
@@ -356,65 +340,23 @@
           {#if confidence > 0}
             <div class="confidence">Confidence: {(confidence * 100).toFixed(1)}%</div>
           {/if}
-          
           {#if countdownActive && confidence >= bufferThreshold}
             <div class="countdown">
               Executing in: {countdownValue.toFixed(1)}s
-              <div class="buffer-info">
-                Buffer size: {signBuffer.length}
-                {#if signBuffer.length > 0}
-                  <div class="current-prediction">
-                    Current best: {formatPredictionDisplay(getMostFrequentAction())}
-                  </div>
-                {/if}
-              </div>
+              <div class="current-prediction">Current best: {formatPredictionDisplay(getMostFrequentAction())}</div>
             </div>
           {/if}
         </div>
 
-       <div class="legend">
-        <h3>Available Actions:</h3>
-        <div class="legend-items">
-          <div class="legend-card">
-            <span class="legend-title">A-Z: Add letter</span>
-          </div>
-
-          <div class="legend-card delete-legend">
-            <span class="legend-title">CLEAR: Clear all text</span>
-            <img src="src/assets/del18.jpg" alt="Delete Action Example" class="legend-preview" />
-          </div>
-
-          <div class="legend-card search-legend">
-            <span class="legend-title">SEARCH: Execute search</span>
-            <img src="src/assets/space2.jpg" alt="Search Action Example" class="legend-preview" />
-          </div>
-        </div>
-      </div>
-
-
-
+        <!-- Settings -->
         <div class="settings-panel">
           <h3>Settings:</h3>
-          <div class="slider-container">
-            <label for="trackingTime">Tracking Time: {trackingTime.toFixed(1)}s</label>
-            <br>
-            <input 
-              type="range" 
-              id="trackingTime"
-              bind:value={trackingTime} 
-              min="0.5" 
-              max="3" 
-              step="0.1"
-              class="time-slider"
-            />
-            <div class="slider-labels">
-              <span>0.5s -</span>
-              <span>3.0s</span>
-            </div>
-          </div>
+          <label for="trackingTime">Tracking Time: {trackingTime.toFixed(1)}s</label>
+          <input type="range" id="trackingTime" bind:value={trackingTime} min="0.5" max="3" step="0.1" class="time-slider" />
         </div>
       </div>
-      
+
+      <!-- Input and legend section -->
       <div class="input-section">
         <div class="text-input-container">
           <div class="input-label">Your Text:</div>
@@ -424,19 +366,29 @@
             <button on:click={submitSearch} class="submit-btn">Search</button>
           </div>
         </div>
+
+        <!-- Legend moved directly below the input -->
+        <div class="legend">
+          <h3>Available Actions:</h3>
+          <div class="legend-items">
+            <div class="legend-card">
+              <span class="legend-title">A-Z: Add letter</span>
+            </div>
+            <div class="legend-card delete-legend">
+              <span class="legend-title">CLEAR: Clear all text</span>
+              <img src="src/assets/del18.jpg" alt="Delete Action Example" class="legend-preview" />
+            </div>
+            <div class="legend-card search-legend">
+              <span class="legend-title">SEARCH: Execute search</span>
+              <img src="src/assets/space2.jpg" alt="Search Action Example" class="legend-preview" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-
-    {#if debug && handVisible}
-      <div class="debug-container">
-        <details>
-          <summary>Debug Info</summary>
-          <pre>{debug}</pre>
-        </details>
-      </div>
-    {/if}
   {/if}
 </main>
+
 
 <style>
   /* === General layout & base styling === */
