@@ -362,7 +362,7 @@
           <div class="input-label">Your Text:</div>
           <div class="input-display" contenteditable="true" bind:innerText={inputText}></div>
           <div class="button-group">
-            <button on:click={clearInput} class="clear-btn">Clear</button>
+            <button on:click={clearInput} class="clear-btn">Delete</button>
             <button on:click={submitSearch} class="submit-btn">Search</button>
           </div>
         </div>
@@ -375,7 +375,7 @@
               <span class="legend-title">A-Z: Add letter</span>
             </div>
             <div class="legend-card delete-legend">
-              <span class="legend-title">CLEAR: Clear all text</span>
+              <span class="legend-title">DELETE: Delete all text</span>
               <img src="src/assets/del18.jpg" alt="Delete Action Example" class="legend-preview" />
             </div>
             <div class="legend-card search-legend">
@@ -533,6 +533,12 @@ h1 {
   object-fit: cover;
   border-radius: 6px;
   border: 2px solid #3498db;
+}
+
+.prediction-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 0.5rem;
 }
 
 .legend-title {
