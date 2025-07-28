@@ -376,11 +376,11 @@
             </div>
             <div class="legend-card delete-legend">
               <span class="legend-title">DELETE: Delete all text</span>
-              <img src="src/assets/del18.jpg" alt="Delete Action Example" class="legend-preview" />
+              <img src="/assets/del18.jpg" alt="Delete Action" class="legend-preview" />
             </div>
             <div class="legend-card search-legend">
               <span class="legend-title">SEARCH: Execute search</span>
-              <img src="src/assets/space2.jpg" alt="Search Action Example" class="legend-preview" />
+              <img src="/assets/space2.jpg" alt="Search Action" class="legend-preview" />
             </div>
           </div>
         </div>
